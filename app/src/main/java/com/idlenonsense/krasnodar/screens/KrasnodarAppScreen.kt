@@ -2,13 +2,13 @@
 
 package com.idlenonsense.krasnodar.screens
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -41,22 +41,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Devices
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.idlenonsense.krasnodar.data.Category
 import com.idlenonsense.krasnodar.data.Place
-import com.idlenonsense.krasnodar.data.foodPlaces
-import com.idlenonsense.krasnodar.data.funPlaces
-import com.idlenonsense.krasnodar.data.hotelPlaces
-import com.idlenonsense.krasnodar.data.visitPlaces
 import com.idlenonsense.krasnodar.ui.KrasnodarViewModel
 import com.idlenonsense.krasnodar.ui.theme.KrasnodarTheme
+import com.idlenonsense.krasnodar.R
 
 @Composable
 fun KrasnodarApp(
@@ -72,10 +68,11 @@ fun KrasnodarApp(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun KrasnodarCompactDevice(
-    appViewModel: KrasnodarViewModel = viewModel()
+    appViewModel: KrasnodarViewModel = viewModel(factory = KrasnodarViewModel.Factory)
 ) {
     val appState by appViewModel.uiState.collectAsState()
     val currentCategory = appState.currentCategory
+    val places by appViewModel.currentPlaces.collectAsState()
     Scaffold(
         bottomBar = {
             if (appState.isShowingListPage) {
@@ -91,12 +88,7 @@ fun KrasnodarCompactDevice(
     ) { paddingValues ->
         if (appState.isShowingListPage) {
             PlaceCardList(
-                placesList = when (appState.currentCategory) {
-                    Category.HOTELS -> hotelPlaces
-                    Category.VISIT -> visitPlaces
-                    Category.FOOD -> foodPlaces
-                    else -> funPlaces
-                                                             },
+                placesList = places,
                 onClick = {
                     appViewModel.changeCurrentPlace(it)
                     appViewModel.navigateToDetailPage()
@@ -114,9 +106,10 @@ fun KrasnodarCompactDevice(
 
 @Composable
 fun KrasnodarExpandedDevice(
-    appViewModel: KrasnodarViewModel = viewModel()
+    appViewModel: KrasnodarViewModel = viewModel(factory = KrasnodarViewModel.Factory)
 ) {
     val appState by appViewModel.uiState.collectAsState()
+    val places by appViewModel.currentPlaces.collectAsState()
     Row {
         VerticalNavBar(
             appViewModel = appViewModel,
@@ -125,12 +118,7 @@ fun KrasnodarExpandedDevice(
                 .weight(1F)
         )
         PlaceCardList(
-            placesList = when (appState.currentCategory) {
-                Category.HOTELS -> hotelPlaces
-                Category.VISIT -> visitPlaces
-                Category.FOOD -> foodPlaces
-                else -> funPlaces
-            },
+            placesList = places,
             onClick = {
                 appViewModel.changeCurrentPlace(it)
                 appViewModel.navigateToDetailPage()
@@ -161,16 +149,17 @@ fun PlaceListItem(
         Row(
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Image(
-                painter = painterResource(id = place.image),
-                contentDescription = stringResource(id = place.name),
+            AsyncImage(
+                model = place.imageUrl,
+                contentDescription = place.name,
                 modifier = modifier
                     .clip(CircleShape)
                     .size(96.dp),
-                contentScale = ContentScale.Crop
+                placeholder = painterResource(R.drawable.loading),
+                error = painterResource(R.drawable.loading_error)
             )
             Text(
-                text = stringResource(id = place.name),
+                text = place.name,
                 textAlign = TextAlign.Center,
                 fontWeight = FontWeight.Bold,
                 fontSize = 20.sp,
@@ -184,7 +173,7 @@ fun PlaceListItem(
 fun PlaceCardList(
     placesList: List<Place>,
     onClick: (Place) -> Unit,
-    modifier: Modifier = Modifier,
+    modifier: Modifier = Modifier.padding(top = 16.dp),
     contentPadding: PaddingValues = PaddingValues(0.dp)
 ) {
     LazyColumn(
@@ -208,15 +197,18 @@ fun PlaceDetailsScreen(
         modifier = modifier
     ) {
         item {
-            Image(
-                painter = painterResource(id = place.image),
-                contentDescription = stringResource(id = place.name),
-                modifier = Modifier.clip(RoundedCornerShape(0.dp, 0.dp, 35.dp, 35.dp))
+            AsyncImage(
+                model = place.imageUrl,
+                contentDescription = place.name,
+                modifier = Modifier.clip(RoundedCornerShape(0.dp, 0.dp, 35.dp, 35.dp)).fillMaxSize(),
+                contentScale = ContentScale.Crop,
+                placeholder = painterResource(R.drawable.loading),
+                error = painterResource(R.drawable.loading_error)
             )
         }
         item {
             Text(
-                stringResource(id = place.desc),
+                place.desc,
                 modifier = Modifier.padding(top = 8.dp, start = 12.dp, end = 12.dp),
                 fontSize = 22.sp
             )
@@ -257,7 +249,7 @@ fun TopBar(
                         )
                     }
                     Text(
-                        text = stringResource(id = currentPlace.name),
+                        text = currentPlace.name,
                         textAlign = TextAlign.End,
                         fontWeight = FontWeight.Bold,
                         modifier = modifier.padding(end = 8.dp)
@@ -402,10 +394,4 @@ fun KrasnodarAppPreview() {
     KrasnodarTheme(darkTheme = true) {
         KrasnodarCompactDevice()
     }
-}
-
-@Preview(device = Devices.TABLET, showBackground = true, showSystemUi = true)
-@Composable
-fun KrasnodarAppExpandedPreview() {
-    KrasnodarExpandedDevice()
 }
